@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24 # 🌟 这里已经升级到最新的 24，消除警告
+          node-version: 24
 
       - name: Install Cloudflare Wrangler
         run: npm install -g wrangler
@@ -26,5 +26,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          echo -e "\nkv_namespaces = [{ binding = \"RENEW_KV\", id = \"${{ secrets.CF_KV_ID }}\" }]" >> wrangler.toml
+          # 1. 强力清理原作者残留在 wrangler.toml 里的旧 KV 绑定（删除包含 kv_namespaces 的所有行及其下方行）
+          sed -i '/kv_namespaces/,$d' wrangler.toml
+          
+          # 2. 注入你自己的 KV 数据库 ID
+          echo -e "\n[[kv_namespaces]]\nbinding = \"RENEW_KV\"\nid = \"${{ secrets.CF_KV_ID }}\"" >> wrangler.toml
+          
+          # 3. 执行标准部署并注入密码变量
           wrangler deploy _worker.js --var AUTH_PASSWORD:"${{ secrets.AUTH_PASSWORD }}"
