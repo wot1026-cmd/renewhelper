@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # 允许你手动点击按钮触发
+  workflow_dispatch: # 允许手动点击按钮触发
 
 jobs:
   deploy:
@@ -16,7 +16,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-size: 20
+          node-version: 20
 
       - name: Install Cloudflare Wrangler
         run: npm install -g wrangler
@@ -26,4 +26,8 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          wrangler deploy _worker.js --var AUTH_PASSWORD:"${{ secrets.AUTH_PASSWORD }}" --kv-file-import RENEW_KV="${{ secrets.CF_KV_ID }}"
+          # 将 KV 绑定动态追加到配置文件末尾，解决废弃参数报错问题
+          echo -e "\nkv_namespaces = [{ binding = \"RENEW_KV\", id = \"${{ secrets.CF_KV_ID }}\" }]" >> wrangler.toml
+          
+          # 执行标准部署并注入密码变量
+          wrangler deploy _worker.js --var AUTH_PASSWORD:"${{ secrets.AUTH_PASSWORD }}"
